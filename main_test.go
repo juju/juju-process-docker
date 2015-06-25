@@ -1,0 +1,239 @@
+// Copyright 2015 Canonical Ltd.
+// Licensed under the AGPLv3, see LICENCE file for details.
+
+package main
+
+import (
+	"bytes"
+	"log"
+
+	gc "gopkg.in/check.v1"
+)
+
+type suite struct {
+	log    *bytes.Buffer
+	stdout *bytes.Buffer
+}
+
+var _ = gc.Suite(&suite{})
+
+func (s *suite) SetUpSuite(c *gc.C) {
+	s.log = &bytes.Buffer{}
+	s.stdout = &bytes.Buffer{}
+	log.SetOutput(s.log)
+	stdout = log.New(s.stdout, "", 0)
+}
+
+func (s *suite) SetUpTest(c *gc.C) {
+	s.log.Reset()
+	s.stdout.Reset()
+}
+
+func (s *suite) TestMaybeHelp(c *gc.C) {
+	type test struct {
+		args   []string
+		code   int
+		exit   bool
+		stdout string
+		log    string
+	}
+	tests := []test{
+		{
+			args: []string{},
+			code: 0,
+			exit: true,
+			log:  mainUsage,
+		},
+		{
+			args: []string{"help"},
+			code: 0,
+			exit: true,
+			log:  mainUsage,
+		},
+		{
+			args: []string{"nothelp"},
+			exit: false,
+			log:  "",
+		},
+		{
+			args: []string{"launch"},
+			exit: false,
+			log:  "",
+		},
+		{
+			args: []string{"destroy", "foo"},
+			exit: false,
+			log:  "",
+		},
+		{
+			args: []string{"help", "launch"},
+			code: 0,
+			exit: true,
+			log:  launchUsage,
+		},
+		{
+			args: []string{"help", "status"},
+			code: 0,
+			exit: true,
+			log:  statusUsage,
+		},
+		{
+			args: []string{"help", "destroy"},
+			code: 0,
+			exit: true,
+			log:  destroyUsage,
+		},
+		{
+			args: []string{"help", "destroy", "extraArgsOk"},
+			code: 0,
+			exit: true,
+			log:  destroyUsage,
+		},
+		{
+			args:   []string{"help", "notAcommand"},
+			code:   1,
+			exit:   true,
+			stdout: "unknown command \"notAcommand\"\n",
+			log:    "\n" + mainUsage,
+		},
+	}
+
+	for i, t := range tests {
+		c.Logf("%d. calling maybeHelp with %#v", i, t.args)
+		code, exit := maybeHelp(t.args)
+		c.Check(exit, gc.Equals, t.exit)
+		// if we're not exiting, we shouldn't care about the code.
+		if t.exit {
+			c.Check(code, gc.Equals, t.code)
+		}
+		c.Check(s.log.String(), gc.Equals, t.log)
+		c.Check(s.stdout.String(), gc.Equals, t.stdout)
+		s.log.Reset()
+		s.stdout.Reset()
+	}
+}
+
+func (s *suite) TestMain(c *gc.C) {
+	f := &fakeCmds{}
+
+	for name, cmd := range cmds {
+		cmd.fn = makeFn(f, name)
+	}
+	type test struct {
+		args   []string
+		code   int
+		cmd    string
+		stdout string
+		log    string
+	}
+	tests := []test{
+		{
+			args: []string{"launch", "foo"},
+			cmd:  "launch",
+		},
+		{
+			args: []string{"status", "foo"},
+			cmd:  "status",
+		},
+		{
+			args: []string{"destroy", "foo"},
+			cmd:  "destroy",
+		},
+		{
+			args:   []string{"launch"},
+			code:   1,
+			log:    "\n" + launchUsage,
+			stdout: "wrong number of arguments for cmd \"launch\"\n",
+		},
+		{
+			args:   []string{"status"},
+			code:   1,
+			log:    "\n" + statusUsage,
+			stdout: "wrong number of arguments for cmd \"status\"\n",
+		},
+		{
+			args:   []string{"destroy"},
+			code:   1,
+			log:    "\n" + destroyUsage,
+			stdout: "wrong number of arguments for cmd \"destroy\"\n",
+		},
+		{
+			args:   []string{"launch", "foo", "bar"},
+			code:   1,
+			log:    "\n" + launchUsage,
+			stdout: "wrong number of arguments for cmd \"launch\"\n",
+		},
+		{
+			args:   []string{"status", "foo", "bar"},
+			code:   1,
+			log:    "\n" + statusUsage,
+			stdout: "wrong number of arguments for cmd \"status\"\n",
+		},
+		{
+			args:   []string{"destroy", "foo", "bar"},
+			code:   1,
+			log:    "\n" + destroyUsage,
+			stdout: "wrong number of arguments for cmd \"destroy\"\n",
+		},
+		{
+			args:   []string{"blah"},
+			log:    "\n" + mainUsage,
+			stdout: "unknown command \"blah\"\n",
+			code:   1,
+		},
+		{
+			args:   []string{"blah", "foo"},
+			log:    "\n" + mainUsage,
+			stdout: "unknown command \"blah\"\n",
+			code:   1,
+		},
+		{
+			args: []string{"launch", "code 1"},
+			code: 1,
+			cmd:  "launch",
+		},
+		{
+			args: []string{"status", "code 1"},
+			code: 1,
+			cmd:  "status",
+		},
+		{
+			args: []string{"destroy", "code 1"},
+			code: 1,
+			cmd:  "destroy",
+		},
+	}
+
+	for i, t := range tests {
+		c.Logf("%d. calling run with %#v", i, t.args)
+		f.code = t.code
+		code := run(t.args)
+		c.Check(code, gc.Equals, t.code)
+		if code == 0 {
+			// if code is non-zero, we don't need to check args
+			c.Check(f.arg, gc.Equals, t.args[1])
+		}
+		c.Check(s.log.String(), gc.Equals, t.log)
+		c.Check(s.stdout.String(), gc.Equals, t.stdout)
+		c.Check(f.name, gc.Equals, t.cmd)
+		s.log.Reset()
+		s.stdout.Reset()
+		f.code = 0
+		f.arg = ""
+		f.name = ""
+	}
+}
+
+type fakeCmds struct {
+	name string
+	arg  string
+	code int
+}
+
+func makeFn(f *fakeCmds, name string) func(string) int {
+	return func(arg string) int {
+		f.name = name
+		f.arg = arg
+		return f.code
+	}
+}
