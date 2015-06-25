@@ -24,7 +24,12 @@ func (suite) TestLaunchArgs(c *gc.C) {
 		Ports: []process.Port{
 			process.Port{
 				External: process.PortRange{8080, 8090},
-				Internal: process.PortRange{80, 88},
+				Internal: process.PortRange{80, 90},
+				Protocol: "tcp",
+			},
+			process.Port{
+				External: process.PortRange{From: 8022},
+				Internal: process.PortRange{From: 22},
 				Protocol: "tcp",
 			},
 		},
@@ -34,10 +39,28 @@ func (suite) TestLaunchArgs(c *gc.C) {
 				InternalMount: "/bar",
 				Mode:          "ro",
 			},
+			process.Volume{
+				ExternalMount: "/baz",
+				InternalMount: "/bat",
+				Mode:          "rw",
+			},
 		},
-		EnvVars: map[string]string{"foo": "bar"},
+		EnvVars: map[string]string{"foo": "bar", "baz": "bat"},
 	}
 	args, err := launchArgs(p)
 	c.Assert(err, jc.ErrorIsNil)
-	c.Check(args, gc.DeepEquals, []string{"run", "--detach", "--name", p.Name, "-e", "foo=bar"})
+	expected := []string{
+		"run",
+		"--detach",
+		"--name", p.Name,
+		"-e", "foo=bar",
+		"-e", "baz=bat",
+		"-p", "8080-8090:80-90/tcp",
+		"-p", "8022:22/tcp",
+		"-v", "/foo:/bar:ro",
+		"-v", "/baz:/bat:rw",
+		p.Image,
+	}
+	expected = append(expected, p.Command...)
+	c.Check(args, gc.DeepEquals, expected)
 }

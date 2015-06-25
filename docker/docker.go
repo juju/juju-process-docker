@@ -77,7 +77,20 @@ func launchArgs(p process.Process) ([]string, error) {
 	}
 
 	for _, p := range p.Ports {
-		args = append(args, "-p", fmt.Sprintf("%d:%d", p.External, p.Internal))
+		if p.External.To > 0 {
+			args = append(args, "-p",
+				fmt.Sprintf("%d-%d:%d-%d/%s",
+					p.External.From,
+					p.External.To,
+					p.Internal.From,
+					p.Internal.To,
+					p.Protocol,
+				),
+			)
+
+		} else {
+			args = append(args, "-p", fmt.Sprintf("%d:%d/%s", p.External.From, p.Internal.From, p.Protocol))
+		}
 	}
 
 	for _, v := range p.Volumes {
