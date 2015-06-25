@@ -15,6 +15,8 @@ import (
 	"gopkg.in/juju/charm.v5/process"
 )
 
+var execCommand = exec.Command
+
 // Launch runs a new docker container with the given process data.
 func Launch(p process.Process) (ProcDetails, error) {
 	args, err := launchArgs(p)
@@ -24,7 +26,7 @@ func Launch(p process.Process) (ProcDetails, error) {
 	d := deputy.Deputy{
 		Errors: deputy.FromStderr,
 	}
-	cmd := exec.Command("docker", args...)
+	cmd := execCommand("docker", args...)
 	out := &bytes.Buffer{}
 	cmd.Stdout = out
 	if err := d.Run(cmd); err != nil {
@@ -52,12 +54,12 @@ func Destroy(id string) error {
 	d := deputy.Deputy{
 		Errors: deputy.FromStderr,
 	}
-	cmd := exec.Command("docker", "stop", id)
+	cmd := execCommand("docker", "stop", id)
 	if err := d.Run(cmd); err != nil {
 		return fmt.Errorf("error while stopping container %q: %s", err)
 	}
 
-	cmd = exec.Command("docker", "rm", id)
+	cmd = execCommand("docker", "rm", id)
 	if err := d.Run(cmd); err != nil {
 		return fmt.Errorf("error while removing container %q: %s", err)
 	}
@@ -107,17 +109,19 @@ func launchArgs(p process.Process) ([]string, error) {
 
 // status is the struct that contains the schema returned by docker's inspect command
 type status struct {
-	State struct {
-		Running    bool
-		Paused     bool
-		Restarting bool
-		OOMKilled  bool
-		Dead       bool
-		Pid        int
-		ExitCode   int
-		Error      string
-	}
-	Name string
+	State state
+	Name  string
+}
+
+type state struct {
+	Running    bool
+	Paused     bool
+	Restarting bool
+	OOMKilled  bool
+	Dead       bool
+	Pid        int
+	ExitCode   int
+	Error      string
 }
 
 // brief returns a short summary for the status.
@@ -139,7 +143,7 @@ func (s *status) brief() string {
 
 // inspect calls docker inspect and returns the unmarshaled json response.
 func inspect(id string) (status, error) {
-	cmd := exec.Command("docker", "inspect", id)
+	cmd := execCommand("docker", "inspect", id)
 	out := &bytes.Buffer{}
 	cmd.Stdout = out
 	d := deputy.Deputy{
@@ -148,8 +152,12 @@ func inspect(id string) (status, error) {
 	if err := d.Run(cmd); err != nil {
 		return status{}, err
 	}
+	return statusFromInspect(id, out.Bytes())
+}
+
+func statusFromInspect(id string, b []byte) (status, error) {
 	var st []status
-	if err := json.Unmarshal(out.Bytes(), &st); err != nil {
+	if err := json.Unmarshal(b, &st); err != nil {
 		return status{}, fmt.Errorf("can't decode response from docker inspect %s: %s", id, err)
 	}
 	if len(st) == 0 {
@@ -159,6 +167,7 @@ func inspect(id string) (status, error) {
 		return status{}, errors.New("multiple status values returned from docker inspect " + id)
 	}
 	return st[0], nil
+
 }
 
 // These two structs are copied from juju/process/plugin
