@@ -44,7 +44,7 @@ Usage:
 process is expected to be a json object with the following format:
 
 {
-	"Name": "unique-image-name",
+	"Name": "unique-container-name",
 	"Command": ["command", "to", "run"],
 	"Image": "docker/whalesay",
 	"Ports": [
@@ -56,8 +56,8 @@ process is expected to be a json object with the following format:
 			"Internal": {
 				"From": 37888,
 				"To": 37988
-			}
-			"Protocol": "tcp"
+			},
+			"Protocol": "tcp",
 			"Endpoint": ""
 		}
 	],
@@ -73,22 +73,20 @@ process is expected to be a json object with the following format:
 		"foo": "bar"
 	}
 }
-
-
 `
-	statusUsage = `status returns information about the given docker container.
+	statusUsage = `status returns information about the docker container with the given id.
 
 Usage:
   juju-process-docker status <id>
 
-Id is expected to be the id of a docker container running on this machine.
+Id is expected to be the id or name of a docker container running on this machine.
 `
-	destroyUsage = `destroy stops and cleans up after the given docker container.
+	destroyUsage = `destroy stops and cleans up after the docker container with the given id.
 
 Usage:
   juju-process-docker destroy <id>
 
-Id is expected to be the id of a docker container running on this machine.
+Id is expected to be the id or name of a docker container running on this machine.
 `
 )
 
@@ -169,13 +167,19 @@ func run(args []string) int {
 	return 1
 }
 
+var (
+	dockerLaunch  = docker.Launch
+	dockerStatus  = docker.Status
+	dockerDestroy = docker.Destroy
+)
+
 func launch(proc string) int {
 	p := process.Process{}
 	if err := json.Unmarshal([]byte(proc), &p); err != nil {
 		stdout.Printf("can't decode proc-info: %s", err)
 		return 1
 	}
-	details, err := docker.Launch(p)
+	details, err := dockerLaunch(p)
 	if err != nil {
 		stdout.Print(err)
 		return 1
@@ -191,7 +195,7 @@ func launch(proc string) int {
 }
 
 func status(id string) int {
-	status, err := docker.Status(id)
+	status, err := dockerStatus(id)
 	if err != nil {
 		stdout.Print(err)
 		return 1
@@ -206,7 +210,7 @@ func status(id string) int {
 }
 
 func destroy(id string) int {
-	err := docker.Destroy(id)
+	err := dockerDestroy(id)
 	if err != nil {
 		stdout.Print(err)
 		return 1

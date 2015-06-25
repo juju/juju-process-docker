@@ -293,6 +293,10 @@ func (suite) TestDestroy(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 }
 
+// fakeExecCommand replaces the normal exec.Command call to produce executables.
+// It returns a command that calls this test executable, telling it to run our
+// TestExecHelper test.  The original command and arguments are passed as
+// arguments to the testhelper after a "--" argument.
 func fakeExecCommand(name string, args ...string) *exec.Cmd {
 	args = append([]string{"-test.run=TestExecHelper", "--", name}, args...)
 	cmd := exec.Command(os.Args[0], args...)
@@ -306,6 +310,8 @@ func fakeExecCommandError(name string, args ...string) *exec.Cmd {
 	return cmd
 }
 
+// TestExecHelper is a fake test that is just used to do predictable things when
+// we run commands.
 func TestExecHelper(*testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
