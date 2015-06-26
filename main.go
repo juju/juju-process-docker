@@ -36,6 +36,8 @@ Commands:
 For more details about a command, use help <command>.
 `
 
+	// TODO(natefinch): fix this when Command becomes a []string.
+	// TODO(natefinch): fix this when we start using portranges.
 	launchUsage = `launch starts a docker container with the given parameters.
 
 Usage:
@@ -45,19 +47,12 @@ process is expected to be a json object with the following format:
 
 {
 	"Name": "unique-container-name",
-	"Command": ["command", "to", "run"],
+	"Command": "command to run",
 	"Image": "docker/whalesay",
 	"Ports": [
 		{
-			"External": {
-				"From": 7888,
-				"To" : 7988
-			},
-			"Internal": {
-				"From": 37888,
-				"To": 37988
-			},
-			"Protocol": "tcp",
+			"External": 7888,
+			"Internal": 37888,
 			"Endpoint": ""
 		}
 	],
