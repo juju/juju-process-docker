@@ -11,7 +11,7 @@ import (
 	"os"
 
 	"github.com/juju/juju-process-docker/docker"
-	"gopkg.in/juju/charm.v5/process"
+	"gopkg.in/juju/charm.v5"
 )
 
 func init() {
@@ -174,7 +174,7 @@ var (
 )
 
 func launch(proc string) int {
-	p := process.Process{}
+	p := charm.Process{}
 	if err := json.Unmarshal([]byte(proc), &p); err != nil {
 		stdout.Printf("can't decode proc-info: %s", err)
 		return 1

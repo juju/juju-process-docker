@@ -11,7 +11,7 @@ import (
 
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/juju/charm.v5/process"
+	"gopkg.in/juju/charm.v5"
 )
 
 type suite struct{}
@@ -24,16 +24,16 @@ func (suite) TestLaunchArgs(c *gc.C) {
 	expected := []string{
 		"run",
 		"--detach",
-		"--name", fakeProc.Name,
+		"--name", "juju-name",
 		"-e", "foo=bar",
 		"-e", "baz=bat",
-		"-p", "8080-8090:80-90/tcp",
+		"-p", "8080:80/tcp",
 		"-p", "8022:22/tcp",
 		"-v", "/foo:/bar:ro",
 		"-v", "/baz:/bat:rw",
-		fakeProc.Image,
+		"docker/whalesay",
+		"cowsay", "boo!",
 	}
-	expected = append(expected, fakeProc.Command...)
 	c.Check(args, gc.DeepEquals, expected)
 }
 
@@ -104,32 +104,32 @@ func (suite) TestBrief(c *gc.C) {
 	}
 }
 
-var fakeProc = process.Process{
+var fakeProc = charm.Process{
 	Name:        "juju-name",
 	Description: "desc",
 	Type:        "docker",
 	TypeOptions: map[string]string{"foo": "bar"},
-	Command:     []string{"cowsay", "boo!"},
-	Image:       "docker/whalesay",
-	Ports: []process.Port{
-		process.Port{
-			External: process.PortRange{8080, 8090},
-			Internal: process.PortRange{80, 90},
-			Protocol: "tcp",
+	// TODO(natefinch): update this when Command becomes a slice
+	Command: "cowsay boo!",
+	Image:   "docker/whalesay",
+	// TODO(natefinch): update this when we use portranges
+	Ports: []charm.ProcessPort{
+		charm.ProcessPort{
+			External: 8080,
+			Internal: 80,
 		},
-		process.Port{
-			External: process.PortRange{From: 8022},
-			Internal: process.PortRange{From: 22},
-			Protocol: "tcp",
+		charm.ProcessPort{
+			External: 8022,
+			Internal: 22,
 		},
 	},
-	Volumes: []process.Volume{
-		process.Volume{
+	Volumes: []charm.ProcessVolume{
+		charm.ProcessVolume{
 			ExternalMount: "/foo",
 			InternalMount: "/bar",
 			Mode:          "ro",
 		},
-		process.Volume{
+		charm.ProcessVolume{
 			ExternalMount: "/baz",
 			InternalMount: "/bat",
 			Mode:          "rw",

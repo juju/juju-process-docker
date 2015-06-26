@@ -10,15 +10,16 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/juju/deputy"
-	"gopkg.in/juju/charm.v5/process"
+	"gopkg.in/juju/charm.v5"
 )
 
 var execCommand = exec.Command
 
 // Launch runs a new docker container with the given process data.
-func Launch(p process.Process) (ProcDetails, error) {
+func Launch(p charm.Process) (ProcDetails, error) {
 	args, err := launchArgs(p)
 	if err != nil {
 		return ProcDetails{}, err
@@ -68,7 +69,7 @@ func Destroy(id string) error {
 
 // launchArgs converts the Process struct into arguments for the docker run
 // command.
-func launchArgs(p process.Process) ([]string, error) {
+func launchArgs(p charm.Process) ([]string, error) {
 	if err := p.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid proc-info: %s", err)
 	}
@@ -79,20 +80,8 @@ func launchArgs(p process.Process) ([]string, error) {
 	}
 
 	for _, p := range p.Ports {
-		if p.External.To > 0 {
-			args = append(args, "-p",
-				fmt.Sprintf("%d-%d:%d-%d/%s",
-					p.External.From,
-					p.External.To,
-					p.Internal.From,
-					p.Internal.To,
-					p.Protocol,
-				),
-			)
-
-		} else {
-			args = append(args, "-p", fmt.Sprintf("%d:%d/%s", p.External.From, p.Internal.From, p.Protocol))
-		}
+		// TODO(natefinch): update this when we use portranges
+		args = append(args, "-p", fmt.Sprintf("%d:%d/%s", p.External, p.Internal, "tcp"))
 	}
 
 	for _, v := range p.Volumes {
@@ -101,8 +90,9 @@ func launchArgs(p process.Process) ([]string, error) {
 
 	// Image and Command must come after all options.
 	args = append(args, p.Image)
-	if len(p.Command) > 0 {
-		args = append(args, p.Command...)
+	if p.Command != "" {
+		// TODO(natefinch): update this when we make command a list of strings
+		args = append(args, strings.Fields(p.Command)...)
 	}
 	return args, nil
 }

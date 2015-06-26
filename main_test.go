@@ -10,7 +10,7 @@ import (
 
 	"github.com/juju/juju-process-docker/docker"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/juju/charm.v5/process"
+	"gopkg.in/juju/charm.v5"
 )
 
 type suite struct {
@@ -241,21 +241,16 @@ func makeFn(f *fakeCmds, name string) func(string) int {
 	}
 }
 
+// TODO(natefinch): update this when we make command into a slice.
+// TODO(natefinch): update this when we start using portranges
 const fakeProcJson = `{
 	"Name": "unique",
-	"Command": ["command", "to", "run"],
+	"Command": "command to run",
 	"Image": "docker/whalesay",
 	"Ports": [
 		{
-			"External": {
-				"From": 7888,
-				"To" : 7988
-			},
-			"Internal": {
-				"From": 37888,
-				"To": 37988
-			},
-			"Protocol": "tcp",
+			"External": 7888,
+			"Internal": 37888,
 			"Endpoint": ""
 		}
 	],
@@ -296,7 +291,7 @@ func (s *suite) TestLaunch(c *gc.C) {
 			stdout:  out,
 		},
 		{
-			desc:   "Bad JSON for process.",
+			desc:   "Bad JSON for charm.",
 			proc:   "badjson",
 			code:   1,
 			stdout: "can't decode proc-info:.*\n",
@@ -312,7 +307,7 @@ func (s *suite) TestLaunch(c *gc.C) {
 
 	for i, t := range tests {
 		c.Logf("%d. %s", i, t.desc)
-		dockerLaunch = func(process.Process) (docker.ProcDetails, error) {
+		dockerLaunch = func(charm.Process) (docker.ProcDetails, error) {
 			return t.details, t.err
 		}
 		code := launch(t.proc)
