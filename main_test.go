@@ -270,10 +270,12 @@ const fakeProcJson = `{
 
 func (s *suite) TestLaunch(c *gc.C) {
 	details := docker.ProcDetails{
-		ID:         "unique",
-		ProcStatus: docker.ProcStatus{Status: "Running"},
+		ID: "unique",
+		Status: docker.ProcStatus{
+			Label: "Running",
+		},
 	}
-	out := `{"id":"unique","status":"Running"}
+	out := `{"id":"unique","status":{"label":"Running"}}
 `
 	type test struct {
 		desc    string
@@ -331,9 +333,11 @@ func (s *suite) TestStatus(c *gc.C) {
 	}
 	tests := []test{
 		{
-			desc:   "Default good case.",
-			status: docker.ProcStatus{Status: "Running"},
-			stdout: `{"status":"Running"}` + "\n",
+			desc: "Default good case.",
+			status: docker.ProcStatus{
+				Label: "Running",
+			},
+			stdout: `{"label":"Running"}` + "\n",
 		},
 		{
 			desc:   "Docker status error.",

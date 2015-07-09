@@ -273,7 +273,12 @@ func (suite) TestLaunch(c *gc.C) {
 	defer func() { execCommand = exec.Command }()
 	pd, err := Launch(fakeProc)
 	c.Assert(err, jc.ErrorIsNil)
-	expected := ProcDetails{ID: "/sad_perlman", ProcStatus: ProcStatus{"Running"}}
+	expected := ProcDetails{
+		ID: "/sad_perlman",
+		Status: ProcStatus{
+			Label: "Running",
+		},
+	}
 	c.Assert(pd, gc.Equals, expected)
 }
 
