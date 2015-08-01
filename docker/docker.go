@@ -18,19 +18,29 @@ import (
 
 var execCommand = exec.Command
 
+const repoFileKey = "RepoFile"
+
 // Launch runs a new docker container with the given process data.
 func Launch(p charm.Process) (ProcDetails, error) {
+	deputy := deputy.Deputy{
+		Errors: deputy.FromStderr,
+	}
+	if file, ok := p.TypeOptions[repoFileKey]; ok {
+		cmd := execCommand("docker", "load", "-i", file)
+		if err := deputy.Run(cmd); err != nil {
+			return ProcDetails{}, fmt.Errorf("error loading docker repository from %q: %v", file, err)
+		}
+	}
+
 	args, err := launchArgs(p)
 	if err != nil {
 		return ProcDetails{}, err
 	}
-	d := deputy.Deputy{
-		Errors: deputy.FromStderr,
-	}
+
 	cmd := execCommand("docker", args...)
 	out := &bytes.Buffer{}
 	cmd.Stdout = out
-	if err := d.Run(cmd); err != nil {
+	if err := deputy.Run(cmd); err != nil {
 		return ProcDetails{}, err
 	}
 	id := string(bytes.TrimSpace(out.Bytes()))

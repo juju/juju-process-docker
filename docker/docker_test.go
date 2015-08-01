@@ -19,13 +19,12 @@ type suite struct{}
 var _ = gc.Suite(&suite{})
 
 func (suite) TestLaunchArgs(c *gc.C) {
-	args, err := launchArgs(fakeProc)
+	args, err := launchArgs(fakeProc())
 	c.Assert(err, jc.ErrorIsNil)
 	expected := []string{
 		"run",
 		"--detach",
 		"--name", "juju-name",
-		"-e", "foo=bar",
 		"-e", "baz=bat",
 		"-p", "8080:80/tcp",
 		"-p", "8022:22/tcp",
@@ -104,38 +103,40 @@ func (suite) TestBrief(c *gc.C) {
 	}
 }
 
-var fakeProc = charm.Process{
-	Name:        "juju-name",
-	Description: "desc",
-	Type:        "docker",
-	TypeOptions: map[string]string{"foo": "bar"},
-	// TODO(natefinch): update this when Command becomes a slice
-	Command: "cowsay boo!",
-	Image:   "docker/whalesay",
-	// TODO(natefinch): update this when we use portranges
-	Ports: []charm.ProcessPort{
-		charm.ProcessPort{
-			External: 8080,
-			Internal: 80,
+func fakeProc() charm.Process {
+	return charm.Process{
+		Name:        "juju-name",
+		Description: "desc",
+		Type:        "docker",
+		TypeOptions: map[string]string{"foo": "bar"},
+		// TODO(natefinch): update this when Command becomes a slice
+		Command: "cowsay boo!",
+		Image:   "docker/whalesay",
+		// TODO(natefinch): update this when we use portranges
+		Ports: []charm.ProcessPort{
+			charm.ProcessPort{
+				External: 8080,
+				Internal: 80,
+			},
+			charm.ProcessPort{
+				External: 8022,
+				Internal: 22,
+			},
 		},
-		charm.ProcessPort{
-			External: 8022,
-			Internal: 22,
+		Volumes: []charm.ProcessVolume{
+			charm.ProcessVolume{
+				ExternalMount: "/foo",
+				InternalMount: "/bar",
+				Mode:          "ro",
+			},
+			charm.ProcessVolume{
+				ExternalMount: "/baz",
+				InternalMount: "/bat",
+				Mode:          "rw",
+			},
 		},
-	},
-	Volumes: []charm.ProcessVolume{
-		charm.ProcessVolume{
-			ExternalMount: "/foo",
-			InternalMount: "/bar",
-			Mode:          "ro",
-		},
-		charm.ProcessVolume{
-			ExternalMount: "/baz",
-			InternalMount: "/bat",
-			Mode:          "rw",
-		},
-	},
-	EnvVars: map[string]string{"foo": "bar", "baz": "bat"},
+		EnvVars: map[string]string{"baz": "bat"},
+	}
 }
 
 const fakeInspectOutput = `
@@ -269,9 +270,11 @@ const fakeInspectOutput = `
 `
 
 func (suite) TestLaunch(c *gc.C) {
-	execCommand = fakeExecCommand
+	e := &execer{}
+	execCommand = e.Command
 	defer func() { execCommand = exec.Command }()
-	pd, err := Launch(fakeProc)
+	proc := fakeProc()
+	pd, err := Launch(proc)
 	c.Assert(err, jc.ErrorIsNil)
 	expected := ProcDetails{
 		ID: "/sad_perlman",
@@ -280,6 +283,45 @@ func (suite) TestLaunch(c *gc.C) {
 		},
 	}
 	c.Assert(pd, gc.Equals, expected)
+	c.Assert(e.Calls, gc.HasLen, 2)
+	c.Assert(e.Calls[0].Name, gc.Equals, "docker")
+
+	args, err := launchArgs(proc)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(e.Calls[0].Args, gc.DeepEquals, args)
+
+	c.Assert(e.Calls[1].Name, gc.Equals, "docker")
+	c.Assert(e.Calls[1].Args, gc.DeepEquals, []string{"inspect", "somebigid"})
+
+}
+
+func (suite) TestLoad(c *gc.C) {
+	e := &execer{}
+	execCommand = e.Command
+	defer func() { execCommand = exec.Command }()
+	proc := fakeProc()
+	proc.TypeOptions[repoFileKey] = "./foo.tar"
+	pd, err := Launch(proc)
+	c.Assert(err, jc.ErrorIsNil)
+	expected := ProcDetails{
+		ID: "/sad_perlman",
+		Status: ProcStatus{
+			Label: "Running",
+		},
+	}
+	c.Assert(pd, gc.Equals, expected)
+	c.Assert(e.Calls, gc.HasLen, 3)
+	c.Assert(e.Calls[0].Name, gc.Equals, "docker")
+	c.Assert(e.Calls[0].Args, gc.DeepEquals, []string{"load", "-i", "./foo.tar"})
+
+	c.Assert(e.Calls[1].Name, gc.Equals, "docker")
+
+	args, err := launchArgs(proc)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(e.Calls[1].Args, gc.DeepEquals, args)
+
+	c.Assert(e.Calls[2].Name, gc.Equals, "docker")
+	c.Assert(e.Calls[2].Args, gc.DeepEquals, []string{"inspect", "somebigid"})
 }
 
 func (suite) TestStatus(c *gc.C) {
@@ -296,6 +338,20 @@ func (suite) TestDestroy(c *gc.C) {
 	defer func() { execCommand = exec.Command }()
 	err := Destroy("someid")
 	c.Assert(err, jc.ErrorIsNil)
+}
+
+type execer struct {
+	Calls []execcmd
+}
+
+type execcmd struct {
+	Name string
+	Args []string
+}
+
+func (e *execer) Command(name string, args ...string) *exec.Cmd {
+	e.Calls = append(e.Calls, execcmd{name, args})
+	return fakeExecCommand(name, args...)
 }
 
 // fakeExecCommand replaces the normal exec.Command call to produce executables.

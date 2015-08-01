@@ -67,7 +67,13 @@ process is expected to be a json object with the following format:
 	"EnvVars": {
 		"foo": "bar"
 	}
+	"TypeOptions": {
+		"RepoFile": "/home/foo/repository-to-load.tar"
+	}
 }
+
+If RepoFile is non-empty, the given repository tar file will be loaded before
+attempting to launch the docker image.
 `
 	statusUsage = `status returns information about the docker container with the given id.
 
