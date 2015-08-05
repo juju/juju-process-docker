@@ -38,8 +38,12 @@ func Launch(p charm.Process) (ProcDetails, error) {
 	if err != nil {
 		return ProcDetails{}, fmt.Errorf("can't get status for container %q: %s", id, err)
 	}
+	name := status.Name
+	if strings.HasPrefix(name, "/") {
+		name = name[1:]
+	}
 	return ProcDetails{
-		ID: status.Name,
+		ID: name,
 		Status: ProcStatus{
 			State: status.brief(),
 		},
