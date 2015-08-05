@@ -38,7 +38,12 @@ func Launch(p charm.Process) (ProcDetails, error) {
 	if err != nil {
 		return ProcDetails{}, fmt.Errorf("can't get status for container %q: %s", id, err)
 	}
-	return ProcDetails{ID: status.Name, Status: ProcStatus{Label: status.brief()}}, nil
+	return ProcDetails{
+		ID: status.Name,
+		Status: ProcStatus{
+			State: status.brief(),
+		},
+	}, nil
 }
 
 // Status returns the ProcStatus for the docker container with the given id.
@@ -47,7 +52,9 @@ func Status(id string) (ProcStatus, error) {
 	if err != nil {
 		return ProcStatus{}, err
 	}
-	return ProcStatus{Label: status.brief()}, nil
+	return ProcStatus{
+		State: status.brief(),
+	}, nil
 }
 
 // Destroy stops and removes the docker container with the given id.
@@ -172,7 +179,7 @@ type ProcDetails struct {
 
 // ProcStatus represents the data returned from the Status call.
 type ProcStatus struct {
-	// Label represents the human-readable string returned by the plugin for
+	// State represents the human-readable string returned by the plugin for
 	// the process.
-	Label string `json:"label"`
+	State string `json:"state"`
 }

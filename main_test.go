@@ -272,10 +272,10 @@ func (s *suite) TestLaunch(c *gc.C) {
 	details := docker.ProcDetails{
 		ID: "unique",
 		Status: docker.ProcStatus{
-			Label: "Running",
+			State: "Running",
 		},
 	}
-	out := `{"id":"unique","status":{"label":"Running"}}
+	out := `{"id":"unique","status":{"state":"Running"}}
 `
 	type test struct {
 		desc    string
@@ -335,9 +335,9 @@ func (s *suite) TestStatus(c *gc.C) {
 		{
 			desc: "Default good case.",
 			status: docker.ProcStatus{
-				Label: "Running",
+				State: "Running",
 			},
-			stdout: `{"label":"Running"}` + "\n",
+			stdout: `{"state":"Running"}` + "\n",
 		},
 		{
 			desc:   "Docker status error.",
