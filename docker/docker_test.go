@@ -274,9 +274,9 @@ func (suite) TestLaunch(c *gc.C) {
 	pd, err := Launch(fakeProc)
 	c.Assert(err, jc.ErrorIsNil)
 	expected := ProcDetails{
-		ID: "/sad_perlman",
+		ID: "sad_perlman",
 		Status: ProcStatus{
-			Label: "Running",
+			State: "Running",
 		},
 	}
 	c.Assert(pd, gc.Equals, expected)
