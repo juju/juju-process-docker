@@ -11,7 +11,7 @@ import (
 	"gopkg.in/juju/charm.v5"
 )
 
-var defaultRunCommand = runCommand
+var defaultRunDocker = runDocker
 
 // Launch runs a new docker container with the given process data.
 func Launch(p charm.Process) (ProcDetails, error) {
@@ -21,7 +21,7 @@ func Launch(p charm.Process) (ProcDetails, error) {
 	}
 
 	args := launchArgs(p)
-	id, err := Run(args, defaultRunCommand)
+	id, err := Run(args, defaultRunDocker)
 	if err != nil {
 		return details, err
 	}
@@ -51,10 +51,10 @@ func Status(id string) (ProcStatus, error) {
 
 // Destroy stops and removes the docker container with the given id.
 func Destroy(id string) error {
-	if err := Stop(id, defaultRunCommand); err != nil {
+	if err := Stop(id, defaultRunDocker); err != nil {
 		return err
 	}
-	if err := Remove(id, defaultRunCommand); err != nil {
+	if err := Remove(id, defaultRunDocker); err != nil {
 		return err
 	}
 	return nil
@@ -114,7 +114,7 @@ func (s *status) brief() string {
 
 // inspect calls docker inspect and returns the unmarshaled json response.
 func inspect(id string) (status, error) {
-	info, err := Inspect(id, defaultRunCommand)
+	info, err := Inspect(id, defaultRunDocker)
 	if err != nil {
 		return status{}, err
 	}

@@ -17,22 +17,20 @@ var _ = gc.Suite(&utilSuite{})
 
 type utilSuite struct{}
 
-func (utilSuite) TestRunCommand(c *gc.C) {
-	call := execCommandCall{
-		out: []byte(fakeInspectOutput),
-	}
-	execCommand = fakeExecCommand(call)
+func (utilSuite) TestRunDocker(c *gc.C) {
+	calls := []execCommandCall{{}}
+	execCommand = fakeExecCommand(calls)
 	defer func() { execCommand = exec.Command }()
 
-	args := []string{"inspect", "spam"}
-	out, err := runCommand(args)
+	out, err := runDocker("inspect", "sad_perlman")
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(string(out), gc.Equals, `ran []string{"docker", "inspect", "spam"}`)
+	c.Check(string(out), gc.Equals, `ran []string{"docker", "inspect", "sad_perlman"}`)
+	c.Check(calls[0].nameIn, gc.Equals, "docker")
+	c.Check(calls[0].argsIn, jc.DeepEquals, []string{"inspect", "sad_perlman"})
 }
 
 type execCommandCall struct {
-	out  []byte
 	fail bool
 
 	nameIn string
@@ -44,7 +42,7 @@ type execCommandCall struct {
 // test executable, telling it to run our TestExecHelper test.  The
 // original command and arguments are passed as arguments to the
 // testhelper after a "--" argument.
-func fakeExecCommand(calls ...execCommandCall) func(string, ...string) *exec.Cmd {
+func fakeExecCommand(calls []execCommandCall) func(string, ...string) *exec.Cmd {
 	index := 0
 	return func(name string, args ...string) *exec.Cmd {
 		calls[index].nameIn = name

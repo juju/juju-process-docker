@@ -18,7 +18,6 @@ func (pluginSuite) TestLaunchArgs(c *gc.C) {
 	args := runArgs.CommandlineArgs()
 
 	expected := []string{
-		"run",
 		"--detach",
 		"--name", "juju-name",
 		"-e", "foo=bar",
@@ -109,8 +108,8 @@ func (pluginSuite) TestLaunch(c *gc.C) {
 	}, {
 		out: []byte(fakeInspectOutput),
 	}}
-	defaultRunCommand = fakeRunCommand(calls...)
-	defer func() { defaultRunCommand = runCommand }()
+	defaultRunDocker = fakeRunDocker(calls...)
+	defer func() { defaultRunDocker = runDocker }()
 
 	pd, err := Launch(fakeProc)
 	c.Assert(err, jc.ErrorIsNil)
@@ -127,8 +126,8 @@ func (pluginSuite) TestStatus(c *gc.C) {
 	calls := []call{{
 		out: []byte(fakeInspectOutput),
 	}}
-	defaultRunCommand = fakeRunCommand(calls...)
-	defer func() { defaultRunCommand = runCommand }()
+	defaultRunDocker = fakeRunDocker(calls...)
+	defer func() { defaultRunDocker = runDocker }()
 
 	ps, err := Status("someid")
 	c.Assert(err, jc.ErrorIsNil)
@@ -138,8 +137,8 @@ func (pluginSuite) TestStatus(c *gc.C) {
 
 func (pluginSuite) TestDestroy(c *gc.C) {
 	calls := make([]call, 2, 2)
-	defaultRunCommand = fakeRunCommand(calls...)
-	defer func() { defaultRunCommand = runCommand }()
+	defaultRunDocker = fakeRunDocker(calls...)
+	defer func() { defaultRunDocker = runDocker }()
 
 	err := Destroy("someid")
 	c.Assert(err, jc.ErrorIsNil)
@@ -149,12 +148,14 @@ type call struct {
 	out []byte
 	err error
 
-	argsIn []string
+	commandIn string
+	argsIn    []string
 }
 
-func fakeRunCommand(calls ...call) func([]string) ([]byte, error) {
+func fakeRunDocker(calls ...call) func(string, ...string) ([]byte, error) {
 	index := 0
-	return func(args []string) ([]byte, error) {
+	return func(command string, args ...string) ([]byte, error) {
+		calls[index].commandIn = command
 		calls[index].argsIn = args
 		call := calls[index]
 		index += 1

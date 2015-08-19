@@ -11,13 +11,13 @@ import (
 // Run runs a new docker container with the given info.
 //
 // If exec is nil then the default (via exec.Command) is used.
-func Run(args RunArgs, exec func([]string) ([]byte, error)) (string, error) {
+func Run(args RunArgs, exec func(string, ...string) ([]byte, error)) (string, error) {
 	if exec == nil {
-		exec = runCommand
+		exec = runDocker
 	}
 
 	cmdArgs := args.CommandlineArgs()
-	out, err := exec(cmdArgs)
+	out, err := exec("run", cmdArgs...)
 	if err != nil {
 		return "", err
 	}
@@ -28,13 +28,12 @@ func Run(args RunArgs, exec func([]string) ([]byte, error)) (string, error) {
 // Inspect gets info about the given container ID (or name).
 //
 // If exec is nil then the default (via exec.Command) is used.
-func Inspect(id string, exec func([]string) ([]byte, error)) (*Info, error) {
+func Inspect(id string, exec func(string, ...string) ([]byte, error)) (*Info, error) {
 	if exec == nil {
-		exec = runCommand
+		exec = runDocker
 	}
 
-	args := []string{"inspect", id}
-	out, err := exec(args)
+	out, err := exec("inspect", id)
 	if err != nil {
 		return nil, err
 	}
@@ -49,13 +48,12 @@ func Inspect(id string, exec func([]string) ([]byte, error)) (*Info, error) {
 // Stop stops the identified container.
 //
 // If exec is nil then the default (via exec.Command) is used.
-func Stop(id string, exec func([]string) ([]byte, error)) error {
+func Stop(id string, exec func(string, ...string) ([]byte, error)) error {
 	if exec == nil {
-		exec = runCommand
+		exec = runDocker
 	}
 
-	args := []string{"stop", id}
-	if _, err := exec(args); err != nil {
+	if _, err := exec("stop", id); err != nil {
 		return err
 	}
 	return nil
@@ -64,13 +62,12 @@ func Stop(id string, exec func([]string) ([]byte, error)) error {
 // Remove removes the identified container.
 //
 // If exec is nil then the default (via exec.Command) is used.
-func Remove(id string, exec func([]string) ([]byte, error)) error {
+func Remove(id string, exec func(string, ...string) ([]byte, error)) error {
 	if exec == nil {
-		exec = runCommand
+		exec = runDocker
 	}
 
-	args := []string{"rm", id}
-	if _, err := exec(args); err != nil {
+	if _, err := exec("rm", id); err != nil {
 		return err
 	}
 	return nil

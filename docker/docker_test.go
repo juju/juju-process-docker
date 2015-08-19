@@ -17,8 +17,8 @@ var _ = gc.Suite(&dockerSuite{})
 type dockerSuite struct{}
 
 func (dockerSuite) TestRun(c *gc.C) {
-	fake := fakeRunCommand{
-		calls: []runCommandCall{{
+	fake := fakeRunDocker{
+		calls: []runDockerCall{{
 			out: []byte("eggs"),
 		}},
 	}
@@ -36,8 +36,8 @@ func (dockerSuite) TestRun(c *gc.C) {
 
 	c.Check(id, gc.Equals, "eggs")
 	c.Check(fake.index, gc.Equals, 1)
+	c.Check(fake.calls[0].commandIn, gc.Equals, "run")
 	c.Check(fake.calls[0].argsIn, jc.DeepEquals, []string{
-		"run",
 		"--detach",
 		"--name", "spam",
 		"-e", "FOO=bar",
@@ -47,8 +47,8 @@ func (dockerSuite) TestRun(c *gc.C) {
 }
 
 func (dockerSuite) TestInspect(c *gc.C) {
-	fake := fakeRunCommand{
-		calls: []runCommandCall{{
+	fake := fakeRunDocker{
+		calls: []runDockerCall{{
 			out: []byte(fakeInspectOutput),
 		}},
 	}
@@ -66,70 +66,70 @@ func (dockerSuite) TestInspect(c *gc.C) {
 		},
 	})
 	c.Check(fake.index, gc.Equals, 1)
+	c.Check(fake.calls[0].commandIn, gc.Equals, "inspect")
 	c.Check(fake.calls[0].argsIn, jc.DeepEquals, []string{
-		"inspect",
 		"sad_perlman",
 	})
 }
 
 func (dockerSuite) TestStop(c *gc.C) {
-	fake := fakeRunCommand{
-		calls: []runCommandCall{{}},
+	fake := fakeRunDocker{
+		calls: []runDockerCall{{}},
 	}
 
 	err := docker.Stop("sad_perlman", fake.exec)
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(fake.index, gc.Equals, 1)
+	c.Check(fake.calls[0].commandIn, gc.Equals, "stop")
 	c.Check(fake.calls[0].argsIn, jc.DeepEquals, []string{
-		"stop",
 		"sad_perlman",
 	})
 }
 
 func (dockerSuite) TestRemove(c *gc.C) {
-	fake := fakeRunCommand{
-		calls: []runCommandCall{{}},
+	fake := fakeRunDocker{
+		calls: []runDockerCall{{}},
 	}
 
 	err := docker.Remove("sad_perlman", fake.exec)
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(fake.index, gc.Equals, 1)
+	c.Check(fake.calls[0].commandIn, gc.Equals, "rm")
 	c.Check(fake.calls[0].argsIn, jc.DeepEquals, []string{
-		"rm",
 		"sad_perlman",
 	})
 }
 
-type runCommandCall struct {
+type runDockerCall struct {
 	out      []byte
 	err      string
 	exitcode int
 
-	argsIn []string
+	commandIn string
+	argsIn    []string
 }
 
-type fakeRunCommand struct {
-	calls []runCommandCall
+type fakeRunDocker struct {
+	calls []runDockerCall
 	index int
 }
 
-// parseArgs returns the args being passed to docker, so arg[0] would be the
-// docker command, like "run" or "stop".  This function will exit out of the
-// helper exec if it was not passed at least 3 arguments (e.g. docker stop id),
-// or if the first arg is not "docker".
-func (fakeRunCommand) parseArgs(args []string) (string, []string, error) {
-	if len(args) < 2 {
-		return "", nil, fmt.Errorf("Not enough arguments passed to docker: %#v\n", args)
+// checkArgs verifies the args being passed to docker.
+func (fakeRunDocker) checkArgs(command string, args []string) error {
+	if len(args) < 1 {
+		fullArgs := append([]string{command}, args...)
+		return fmt.Errorf("Not enough arguments passed to docker: %#v\n", fullArgs)
 	}
-	return args[0], args[1:], nil
+	return nil
 }
 
-func (frc *fakeRunCommand) exec(args []string) (_ []byte, rErr error) {
-	frc.calls[frc.index].argsIn = args
-	call := frc.calls[frc.index]
-	frc.index += 1
+func (frd *fakeRunDocker) exec(command string, args ...string) (_ []byte, rErr error) {
+	frd.calls[frd.index].commandIn = command
+	frd.calls[frd.index].argsIn = args
+	call := frd.calls[frd.index]
+	frd.index += 1
 
 	exitcode := call.exitcode
 	defer func() {
@@ -144,8 +144,7 @@ func (frc *fakeRunCommand) exec(args []string) (_ []byte, rErr error) {
 		}
 	}()
 
-	_, args, err := frc.parseArgs(args)
-	if err != nil {
+	if err := frd.checkArgs(command, args); err != nil {
 		exitcode = 2
 		return nil, err
 	}

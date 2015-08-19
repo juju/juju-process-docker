@@ -14,11 +14,11 @@ const executable = "docker"
 
 var execCommand = exec.Command
 
-func runCommand(args []string) ([]byte, error) {
+func runDocker(command string, args ...string) ([]byte, error) {
 	d := deputy.Deputy{
 		Errors: deputy.FromStderr,
 	}
-	cmd := execCommand(executable, args...)
+	cmd := execCommand(executable, append([]string{command}, args...)...)
 	out := &bytes.Buffer{}
 	cmd.Stdout = out
 	if err := d.Run(cmd); err != nil {

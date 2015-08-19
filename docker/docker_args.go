@@ -62,10 +62,7 @@ type RunArgs struct {
 // CommandlineArgs converts the RunArgs into a list of strings that may
 // be passed to exec.Command as the command args.
 func (ra RunArgs) CommandlineArgs() []string {
-	subCommand := "run"
-
 	args := []string{
-		subCommand,
 		"--detach",
 		"--name", ra.Name,
 	}
