@@ -6,25 +6,7 @@ package docker
 
 import (
 	"bytes"
-	"os/exec"
-
-	"github.com/juju/deputy"
 )
-
-const executable = "docker"
-
-func runCommand(args []string) ([]byte, error) {
-	d := deputy.Deputy{
-		Errors: deputy.FromStderr,
-	}
-	cmd := exec.Command(executable, args...)
-	out := &bytes.Buffer{}
-	cmd.Stdout = out
-	if err := d.Run(cmd); err != nil {
-		return nil, err
-	}
-	return out.Bytes(), nil
-}
 
 // Run runs a new docker container with the given info.
 //
