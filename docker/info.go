@@ -13,7 +13,7 @@ type Info struct {
 	Process Process
 }
 
-// State holds the information about the state of a container,
+// Process holds the information about the process running the container,
 // as provided by the "docker inspect" command.
 type Process struct {
 	// State is the state of the container process.
