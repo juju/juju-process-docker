@@ -8,18 +8,39 @@ import (
 	"bytes"
 )
 
-var defaultExec = runDocker
+// Client represents a client to docker's API.
+type Client interface {
+	// Run runs a new docker container with the given info.
+	Run(args RunArgs) (string, error)
+
+	// Inspect gets info about the given container ID (or name).
+	Inspect(id string) (*Info, error)
+
+	// Stop stops the identified container.
+	Stop(id string) error
+
+	// Remove removes the identified container.
+	Remove(id string) error
+}
+
+// CLIClient is a Client that wraps CLI execution of the docker command.
+type CLIClient struct {
+	// RunDocker executes the provided docker sub-command and args.
+	RunDocker func(string, ...string) ([]byte, error)
+}
+
+// NewCLIClient returns a new CLIClient.
+func NewCLIClient() *CLIClient {
+	cli := &CLIClient{
+		RunDocker: runDocker,
+	}
+	return cli
+}
 
 // Run runs a new docker container with the given info.
-//
-// If exec is nil then the default (via exec.Command) is used.
-func Run(args RunArgs, exec func(string, ...string) ([]byte, error)) (string, error) {
-	if exec == nil {
-		exec = defaultExec
-	}
-
+func (cli *CLIClient) Run(args RunArgs) (string, error) {
 	cmdArgs := args.CommandlineArgs()
-	out, err := exec("run", cmdArgs...)
+	out, err := cli.RunDocker("run", cmdArgs...)
 	if err != nil {
 		return "", err
 	}
@@ -28,14 +49,8 @@ func Run(args RunArgs, exec func(string, ...string) ([]byte, error)) (string, er
 }
 
 // Inspect gets info about the given container ID (or name).
-//
-// If exec is nil then the default (via exec.Command) is used.
-func Inspect(id string, exec func(string, ...string) ([]byte, error)) (*Info, error) {
-	if exec == nil {
-		exec = defaultExec
-	}
-
-	out, err := exec("inspect", id)
+func (cli *CLIClient) Inspect(id string) (*Info, error) {
+	out, err := cli.RunDocker("inspect", id)
 	if err != nil {
 		return nil, err
 	}
@@ -48,28 +63,16 @@ func Inspect(id string, exec func(string, ...string) ([]byte, error)) (*Info, er
 }
 
 // Stop stops the identified container.
-//
-// If exec is nil then the default (via exec.Command) is used.
-func Stop(id string, exec func(string, ...string) ([]byte, error)) error {
-	if exec == nil {
-		exec = defaultExec
-	}
-
-	if _, err := exec("stop", id); err != nil {
+func (cli *CLIClient) Stop(id string) error {
+	if _, err := cli.RunDocker("stop", id); err != nil {
 		return err
 	}
 	return nil
 }
 
 // Remove removes the identified container.
-//
-// If exec is nil then the default (via exec.Command) is used.
-func Remove(id string, exec func(string, ...string) ([]byte, error)) error {
-	if exec == nil {
-		exec = defaultExec
-	}
-
-	if _, err := exec("rm", id); err != nil {
+func (cli *CLIClient) Remove(id string) error {
+	if _, err := cli.RunDocker("rm", id); err != nil {
 		return err
 	}
 	return nil
