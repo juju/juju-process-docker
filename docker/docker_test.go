@@ -16,7 +16,7 @@ var _ = gc.Suite(&dockerSuite{})
 
 type dockerSuite struct{}
 
-func (dockerSuite) TestRun(c *gc.C) {
+func (dockerSuite) TestRunOkay(c *gc.C) {
 	fake := fakeRunDocker{
 		calls: []runDockerCall{{
 			out: []byte("eggs"),
@@ -43,6 +43,28 @@ func (dockerSuite) TestRun(c *gc.C) {
 		"-e", "FOO=bar",
 		"my-spam",
 		"do", "something",
+	})
+}
+
+func (dockerSuite) TestRunMinimal(c *gc.C) {
+	fake := fakeRunDocker{
+		calls: []runDockerCall{{
+			out: []byte("eggs"),
+		}},
+	}
+
+	args := docker.RunArgs{
+		Image: "my-spam",
+	}
+	id, err := docker.Run(args, fake.exec)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(id, gc.Equals, "eggs")
+	c.Check(fake.index, gc.Equals, 1)
+	c.Check(fake.calls[0].commandIn, gc.Equals, "run")
+	c.Check(fake.calls[0].argsIn, jc.DeepEquals, []string{
+		"--detach",
+		"my-spam",
 	})
 }
 

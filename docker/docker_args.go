@@ -64,7 +64,10 @@ type RunArgs struct {
 func (ra RunArgs) CommandlineArgs() []string {
 	args := []string{
 		"--detach",
-		"--name", ra.Name,
+	}
+
+	if ra.Name != "" {
+		args = append(args, "--name", ra.Name)
 	}
 
 	for k, v := range ra.EnvVars {
