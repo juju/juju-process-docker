@@ -48,14 +48,14 @@ type RunArgs struct {
 	Image string
 	// Command is the command to run in the container (optional).
 	Command string
-	// EnvVars are environment variables to use in the container,
+	// EnvVars holds the environment variables to use in the container,
 	// if any.
 	EnvVars map[string]string
-	// Ports is the list of ports to map into the container from
-	// the host, if any.
+	// Ports holds the ports info to map into the container from the
+	// host, if any.
 	Ports []PortAssignment
-	// Mounts is the list of volumes to map into the container from
-	// the host, if any.
+	// Mounts holds the volumes info to map into the container from the
+	// host, if any.
 	Mounts []MountAssignment
 }
 
