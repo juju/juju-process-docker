@@ -8,12 +8,14 @@ import (
 	"bytes"
 )
 
+var defaultExec = runDocker
+
 // Run runs a new docker container with the given info.
 //
 // If exec is nil then the default (via exec.Command) is used.
 func Run(args RunArgs, exec func(string, ...string) ([]byte, error)) (string, error) {
 	if exec == nil {
-		exec = runDocker
+		exec = defaultExec
 	}
 
 	cmdArgs := args.CommandlineArgs()
@@ -30,7 +32,7 @@ func Run(args RunArgs, exec func(string, ...string) ([]byte, error)) (string, er
 // If exec is nil then the default (via exec.Command) is used.
 func Inspect(id string, exec func(string, ...string) ([]byte, error)) (*Info, error) {
 	if exec == nil {
-		exec = runDocker
+		exec = defaultExec
 	}
 
 	out, err := exec("inspect", id)
@@ -50,7 +52,7 @@ func Inspect(id string, exec func(string, ...string) ([]byte, error)) (*Info, er
 // If exec is nil then the default (via exec.Command) is used.
 func Stop(id string, exec func(string, ...string) ([]byte, error)) error {
 	if exec == nil {
-		exec = runDocker
+		exec = defaultExec
 	}
 
 	if _, err := exec("stop", id); err != nil {
@@ -64,7 +66,7 @@ func Stop(id string, exec func(string, ...string) ([]byte, error)) error {
 // If exec is nil then the default (via exec.Command) is used.
 func Remove(id string, exec func(string, ...string) ([]byte, error)) error {
 	if exec == nil {
-		exec = runDocker
+		exec = defaultExec
 	}
 
 	if _, err := exec("rm", id); err != nil {
