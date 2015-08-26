@@ -3,52 +3,56 @@
 
 package docker
 
-// Info holds all available information about a docker container.
-type Info struct {
-	// ID is the unique identifier docker uses to identify the container.
-	ID string
-	// Name is the unique name that may be used to identify the container.
-	Name string
-	// Process describes the process running the container.
-	Process Process
-}
+import (
+	"encoding/json"
+	"fmt"
 
-// Process holds the information about the process running the container,
-// as provided by the "docker inspect" command.
-type Process struct {
-	// State is the state of the container process.
-	State State
-	// PID is the PID of the container process.
-	PID int
-	// ExitCode is the exit code of a stopped container.
-	ExitCode int
-	// Error is the error message from a failed container.
-	Error string
-}
-
-// These are the different possible values of State.Current.
-const (
-	StateUnknown    State = ""
-	StateRunning    State = "Running"
-	StatePaused     State = "Paused"
-	StateRestarting State = "Restarting"
-	StateOOMKilled  State = "OOMKilled"
-	StateDead       State = "Dead"
+	"github.com/docker/docker/api/types"
 )
 
-// State describes the high-level state of a docker container.
-type State string
-
-// String returns the correct representation of the container state.
-func (st State) String() string {
-	switch st {
-	case StateRunning:
-	case StatePaused:
-	case StateRestarting:
-	case StateOOMKilled:
-	case StateDead:
-	default:
-		return "Unknown"
+// ParseInfoJSON converts the JSON output of docker inspect into an Info.
+func ParseInfoJSON(id string, data []byte) (*Info, error) {
+	var infos []Info
+	if err := json.Unmarshal(data, &infos); err != nil {
+		return nil, fmt.Errorf("can't decode response from docker inspect %s: %s", id, err)
 	}
-	return string(st)
+	if len(infos) == 0 {
+		return nil, fmt.Errorf("no status returned from docker inspect %s", id)
+	}
+	if len(infos) > 1 {
+		return nil, fmt.Errorf("multiple status values returned from docker inspect %s", id)
+	}
+	return &infos[0], nil
+}
+
+// TODO(ericsnow) What happens with newer docker?
+
+// Info holds all available information about a docker container.
+type Info types.ContainerJSONPre120
+
+// These are the different possible states of a container.
+const (
+	StateUnknown    = ""
+	StateRunning    = "Running"
+	StatePaused     = "Paused"
+	StateRestarting = "Restarting"
+	StateOOMKilled  = "OOMKilled"
+	StateDead       = "Dead"
+)
+
+// StateValue returns the label for the current state of the container.
+func (info Info) StateValue() string {
+	switch {
+	case info.State.Running:
+		return StateRunning
+	case info.State.OOMKilled:
+		return StateOOMKilled
+	case info.State.Dead:
+		return StateDead
+	case info.State.Restarting:
+		return StateRestarting
+	case info.State.Paused:
+		return StatePaused
+	}
+	return StateUnknown
 }

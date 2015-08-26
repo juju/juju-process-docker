@@ -80,15 +80,7 @@ func (dockerSuite) TestInspectOkay(c *gc.C) {
 	info, err := client.Inspect("sad_perlman")
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(info, jc.DeepEquals, &docker.Info{
-		ID: "b508c7d5c2722b7ac4f105fedf835789fb705f71feb6e264f542dc33cdc41232",
-		// TODO(ericsnow) Strip the leading slash.
-		Name: "/sad_perlman",
-		Process: docker.Process{
-			State: docker.StateRunning,
-			PID:   11820,
-		},
-	})
+	c.Check(info, jc.DeepEquals, (*docker.Info)(fakeInfo))
 	c.Check(fake.index, gc.Equals, 1)
 	c.Check(fake.calls[0].commandIn, gc.Equals, "inspect")
 	c.Check(fake.calls[0].argsIn, jc.DeepEquals, []string{
