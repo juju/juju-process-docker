@@ -114,6 +114,23 @@ func (dockerSuite) TestRemoveOkay(c *gc.C) {
 	})
 }
 
+func (dockerSuite) TestVersionOkay(c *gc.C) {
+	client, fake := newClient(versionOutput_1_8_noServer)
+
+	version, err := client.Version()
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(version, jc.DeepEquals, &docker.VersionInfo{
+		Raw:   "1.8.1",
+		Major: 1,
+		Minor: 8,
+		Patch: 1,
+	})
+	c.Check(fake.index, gc.Equals, 1)
+	c.Check(fake.calls[0].commandIn, gc.Equals, "version")
+	c.Check(fake.calls[0].argsIn, gc.HasLen, 0)
+}
+
 type runDockerCall struct {
 	out      []byte
 	err      string
@@ -130,7 +147,7 @@ type fakeRunDocker struct {
 
 // checkArgs verifies the args being passed to docker.
 func (fakeRunDocker) checkArgs(command string, args []string) error {
-	if len(args) < 1 {
+	if len(args) < 1 && command != "version" {
 		fullArgs := append([]string{command}, args...)
 		return fmt.Errorf("Not enough arguments passed to docker: %#v\n", fullArgs)
 	}

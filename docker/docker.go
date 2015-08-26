@@ -78,3 +78,17 @@ func (cli *CLIClient) Remove(id string) error {
 	}
 	return nil
 }
+
+// Version returns the version of docker.
+func (cli *CLIClient) Version() (*VersionInfo, error) {
+	out, err := cli.RunDocker("version")
+	if err != nil {
+		return nil, err
+	}
+
+	vers, err := ParseVersionCLI(out)
+	if err != nil {
+		return nil, err
+	}
+	return vers, nil
+}
