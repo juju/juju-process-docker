@@ -1,7 +1,8 @@
 // Copyright 2015 Canonical Ltd.
 // Licensed under the AGPLv3, see LICENCE file for details.
 
-// Package docker exposes an API to convert Jujuisms to dockerisms.
+// Package docker provides types and helpers that Juju uses to interact
+// with docker.
 package docker
 
 import (
