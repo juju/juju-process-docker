@@ -19,11 +19,12 @@ type dockerSuite struct {
 	testing.CleanupSuite
 }
 
-func newClient(out string) (*docker.CLIClient, *fakeRunDocker) {
-	fake := &fakeRunDocker{
-		calls: []runDockerCall{{
+func newClient(outs ...string) (*docker.CLIClient, *fakeRunDocker) {
+	fake := &fakeRunDocker{}
+	for _, out := range outs {
+		fake.calls = append(fake.calls, runDockerCall{
 			out: []byte(out),
-		}},
+		})
 	}
 	client := docker.NewCLIClient()
 	client.RunDocker = fake.exec
@@ -74,18 +75,23 @@ func (dockerSuite) TestRunMinimal(c *gc.C) {
 	})
 }
 
-func (dockerSuite) TestInspectOkay(c *gc.C) {
-	client, fake := newClient(fakeInspectOutput)
+func (dockerSuite) TestInspectPre120(c *gc.C) {
+	client, fake := newClient(versionOutput_1_0, fakeInspectOutput)
 
 	info, err := client.Inspect("sad_perlman")
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(info, jc.DeepEquals, (*docker.Info)(fakeInfo))
-	c.Check(fake.index, gc.Equals, 1)
-	c.Check(fake.calls[0].commandIn, gc.Equals, "inspect")
-	c.Check(fake.calls[0].argsIn, jc.DeepEquals, []string{
+	c.Check(fake.index, gc.Equals, 2)
+	c.Check(fake.calls[0].commandIn, gc.Equals, "version")
+	c.Check(fake.calls[1].commandIn, gc.Equals, "inspect")
+	c.Check(fake.calls[1].argsIn, jc.DeepEquals, []string{
 		"sad_perlman",
 	})
+}
+
+func (dockerSuite) TestInspectPost120(c *gc.C) {
+	// TODO(ericsnow) finish!
 }
 
 func (dockerSuite) TestStopOkay(c *gc.C) {

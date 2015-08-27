@@ -51,12 +51,18 @@ func (cli *CLIClient) Run(args RunArgs) (string, error) {
 
 // Inspect gets info about the given container ID (or name).
 func (cli *CLIClient) Inspect(id string) (*Info, error) {
+	version, err := cli.Version()
+	if err != nil {
+		// This will cause the pre-1.8 code to trigger.
+		version = Version{}
+	}
+
 	out, err := cli.RunDocker("inspect", id)
 	if err != nil {
 		return nil, err
 	}
 
-	info, err := ParseInfoJSON(id, out)
+	info, err := ParseInfoJSON(id, out, version)
 	if err != nil {
 		return nil, err
 	}

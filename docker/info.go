@@ -10,8 +10,17 @@ import (
 	"github.com/docker/docker/api/types"
 )
 
+var v120 = VersionInfo{Major: 1, Minor: 20}
+
 // ParseInfoJSON converts the JSON output of docker inspect into an Info.
-func ParseInfoJSON(id string, data []byte) (*Info, error) {
+func ParseInfoJSON(id string, data []byte, version Version) (*Info, error) {
+	if version.APIClient.Compare(v120) < 0 {
+		return parseInfoPost120(id, data)
+	}
+	return parseInfoPre120(id, data)
+}
+
+func parseInfoPre120(id string, data []byte) (*Info, error) {
 	var infos []Info
 	if err := json.Unmarshal(data, &infos); err != nil {
 		return nil, fmt.Errorf("can't decode response from docker inspect %s: %s", id, err)
@@ -25,7 +34,10 @@ func ParseInfoJSON(id string, data []byte) (*Info, error) {
 	return &infos[0], nil
 }
 
-// TODO(ericsnow) What happens with newer docker?
+func parseInfoPost120(id string, data []byte) (*Info, error) {
+	// TODO(ericsnow) finish!
+	return nil, fmt.Errorf("version 1.8+ not supported")
+}
 
 // Info holds all available information about a docker container.
 type Info types.ContainerJSONPre120

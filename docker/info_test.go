@@ -16,30 +16,45 @@ import (
 
 var _ = gc.Suite(&infoSuite{})
 
+var (
+	v10 = docker.Version{
+		Client:    docker.VersionInfo{Major: 1},
+		APIClient: docker.VersionInfo{Major: 1, Minor: 12},
+	}
+	v18 = docker.Version{
+		Client:    docker.VersionInfo{Major: 1, Minor: 8},
+		APIClient: docker.VersionInfo{Major: 1, Minor: 20},
+	}
+)
+
 type infoSuite struct{}
 
-func (infoSuite) TestParseInfoJSONOkay(c *gc.C) {
-	info, err := docker.ParseInfoJSON("id", []byte(fakeInspectOutput))
+func (infoSuite) TestParseInfoJSONPre120(c *gc.C) {
+	info, err := docker.ParseInfoJSON("id", []byte(fakeInspectOutput), v10)
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(info, jc.DeepEquals, (*docker.Info)(fakeInfo))
 }
 
+func (infoSuite) TestParseInfoJSONPost120(c *gc.C) {
+	// TODO(ericsnow) finish!
+}
+
 func (infoSuite) TestParseInfoJSONNone(c *gc.C) {
 	b := []byte("not json")
-	_, err := docker.ParseInfoJSON("id", b)
+	_, err := docker.ParseInfoJSON("id", b, v10)
 	c.Assert(err, gc.ErrorMatches, "can't decode response from docker inspect id.*")
 }
 
 func (infoSuite) TestParseInfoJSONEmpty(c *gc.C) {
 	b := []byte(`[]`)
-	_, err := docker.ParseInfoJSON("id", b)
+	_, err := docker.ParseInfoJSON("id", b, v10)
 	c.Assert(err, gc.ErrorMatches, "no status returned from docker inspect id")
 }
 
 func (infoSuite) TestParseInfoJSONMultiple(c *gc.C) {
 	b := []byte(`[{"Name":"foo"},{"Name":"bar"}]`)
-	_, err := docker.ParseInfoJSON("id", b)
+	_, err := docker.ParseInfoJSON("id", b, v10)
 	c.Assert(err, gc.ErrorMatches, "multiple status values returned from docker inspect id")
 }
 
