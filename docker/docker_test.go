@@ -120,11 +120,18 @@ func (dockerSuite) TestVersionOkay(c *gc.C) {
 	version, err := client.Version()
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(version, jc.DeepEquals, &docker.VersionInfo{
-		Raw:   "1.8.1",
-		Major: 1,
-		Minor: 8,
-		Patch: 1,
+	c.Check(version, jc.DeepEquals, docker.Version{
+		Client: docker.VersionInfo{
+			Raw:   "1.8.1",
+			Major: 1,
+			Minor: 8,
+			Patch: 1,
+		},
+		APIClient: docker.VersionInfo{
+			Raw:   "1.20",
+			Major: 1,
+			Minor: 20,
+		},
 	})
 	c.Check(fake.index, gc.Equals, 1)
 	c.Check(fake.calls[0].commandIn, gc.Equals, "version")

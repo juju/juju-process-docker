@@ -15,20 +15,25 @@ var _ = gc.Suite(&versionSuite{})
 type versionSuite struct{}
 
 func (versionSuite) TestParseVersionCLIFull(c *gc.C) {
-	versions := map[string]string{
-		"1.0.1": versionOutput_1_0,
-		"1.2.1": versionOutput_1_2,
-		"1.6.1": versionOutput_1_6,
-		"1.8.1": versionOutput_1_8,
+	tests := []struct {
+		out  string
+		vers string
+		api  string
+	}{
+		{versionOutput_1_0, "1.0.1", "1.12"},
+		{versionOutput_1_2, "1.2.1", "1.14"},
+		{versionOutput_1_6, "1.6.1", "1.18"},
+		{versionOutput_1_8, "1.8.1", "1.20"},
 	}
-	for vers, out := range versions {
-		c.Logf("checking %q", vers)
-		vi, err := docker.ParseVersionCLI([]byte(out))
+	for _, test := range tests {
+		c.Logf("checking %q", test.vers)
+		v, err := docker.ParseVersionCLI([]byte(test.out))
 		if !c.Check(err, jc.ErrorIsNil) {
 			continue
 		}
 
-		c.Check(vi.String(), jc.DeepEquals, vers)
+		c.Check(v.Client.String(), jc.DeepEquals, test.vers)
+		c.Check(v.APIClient.String(), jc.DeepEquals, test.api)
 	}
 }
 
@@ -41,12 +46,12 @@ func (versionSuite) TestParseVersionCLINoServer(c *gc.C) {
 	}
 	for vers, out := range versions {
 		c.Logf("checking %q", vers)
-		vi, err := docker.ParseVersionCLI([]byte(out))
+		v, err := docker.ParseVersionCLI([]byte(out))
 		if !c.Check(err, jc.ErrorIsNil) {
 			continue
 		}
 
-		c.Check(vi.String(), jc.DeepEquals, vers)
+		c.Check(v.Client.String(), jc.DeepEquals, vers)
 	}
 }
 
