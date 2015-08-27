@@ -40,7 +40,7 @@ func parseInfoPost120(id string, data []byte) (*Info, error) {
 }
 
 // Info holds all available information about a docker container.
-type Info types.ContainerJSONPre120
+type Info types.ContainerJSON
 
 // These are the different possible states of a container.
 const (

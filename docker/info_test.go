@@ -59,7 +59,7 @@ func (infoSuite) TestParseInfoJSONMultiple(c *gc.C) {
 }
 
 func (infoSuite) TestStateValue(c *gc.C) {
-	info := docker.Info(types.ContainerJSONPre120{
+	info := docker.Info(types.ContainerJSON{
 		ContainerJSONBase: &types.ContainerJSONBase{
 			ID:   "b508c7d5c2722b7ac4f105fedf835789fb705f71feb6e264f542dc33cdc41232",
 			Name: "/sad_perlman",
@@ -208,7 +208,7 @@ const fakeInspectOutput = `
 ]
 `
 
-var fakeInfo = &types.ContainerJSONPre120{
+var fakeInfo = &types.ContainerJSON{
 	ContainerJSONBase: &types.ContainerJSONBase{
 		ID:      "b508c7d5c2722b7ac4f105fedf835789fb705f71feb6e264f542dc33cdc41232",
 		Created: "2015-06-25T11:05:53.694518797Z",
@@ -303,37 +303,33 @@ var fakeInfo = &types.ContainerJSONPre120{
 			CgroupParent: "",
 		},
 	},
-	Volumes:   map[string]string{},
-	VolumesRW: map[string]bool{},
-	Config: &types.ContainerConfig{
-		Config: &runconfig.Config{
-			Hostname:     "b508c7d5c272",
-			Domainname:   "",
-			User:         "",
-			AttachStdin:  false,
-			AttachStdout: false,
-			AttachStderr: false,
-			//PortSpecs:    nil, // This field has been removed in newer docker.
-			ExposedPorts: nil,
-			Tty:          false,
-			OpenStdin:    false,
-			StdinOnce:    false,
-			Env: []string{
-				"PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-			},
-			Cmd: runconfig.NewCommand(
-				"sleep",
-				"30",
-			),
-			Image:           "docker/whalesay",
-			Volumes:         nil,
-			VolumeDriver:    "",
-			WorkingDir:      "/cowsay",
-			Entrypoint:      nil,
-			NetworkDisabled: false,
-			MacAddress:      "",
-			OnBuild:         nil,
-			Labels:          map[string]string{},
+	Config: &runconfig.Config{
+		Hostname:     "b508c7d5c272",
+		Domainname:   "",
+		User:         "",
+		AttachStdin:  false,
+		AttachStdout: false,
+		AttachStderr: false,
+		//PortSpecs:    nil, // This field has been removed in newer docker.
+		ExposedPorts: nil,
+		Tty:          false,
+		OpenStdin:    false,
+		StdinOnce:    false,
+		Env: []string{
+			"PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		},
+		Cmd: runconfig.NewCommand(
+			"sleep",
+			"30",
+		),
+		Image:           "docker/whalesay",
+		Volumes:         nil,
+		VolumeDriver:    "",
+		WorkingDir:      "/cowsay",
+		Entrypoint:      nil,
+		NetworkDisabled: false,
+		MacAddress:      "",
+		OnBuild:         nil,
+		Labels:          map[string]string{},
 	},
 }
