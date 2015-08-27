@@ -87,7 +87,7 @@ OS/Arch (client): linux/amd64
 `
 	versionOutput_1_6 = `
 Client version: 1.6.1
-Client API version: 1.20
+Client API version: 1.18
 Go version (client): go1.2.1
 Git commit (client): 990021a
 OS/Arch (client): linux/amd64
@@ -99,7 +99,7 @@ OS/Arch (server): linux/amd64
 `
 	versionOutput_1_6_noServer = `
 Client version: 1.6.1
-Client API version: 1.20
+Client API version: 1.18
 Go version (client): go1.2.1
 Git commit (client): 990021a
 OS/Arch (client): linux/amd64
