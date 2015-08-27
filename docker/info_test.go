@@ -313,7 +313,7 @@ var fakeInfo = &types.ContainerJSONPre120{
 			AttachStdin:  false,
 			AttachStdout: false,
 			AttachStderr: false,
-			//PortSpecs:    nil,
+			//PortSpecs:    nil, // This field has been removed in newer docker.
 			ExposedPorts: nil,
 			Tty:          false,
 			OpenStdin:    false,
