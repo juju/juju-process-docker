@@ -1,185 +1,80 @@
 // Copyright 2015 Canonical Ltd.
 // Licensed under the AGPLv3, see LICENCE file for details.
 
-// Package docker exposes an API to convert Jujuisms to dockerisms.
+// Package docker provides types and helpers that Juju uses to interact
+// with docker.
 package docker
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"os/exec"
-	"strings"
-
-	"github.com/juju/deputy"
-	"gopkg.in/juju/charm.v5"
 )
 
-var execCommand = exec.Command
+// Client represents a client to docker's API.
+type Client interface {
+	// Run runs a new docker container with the given info.
+	Run(args RunArgs) (string, error)
 
-// Launch runs a new docker container with the given process data.
-func Launch(p charm.Process) (ProcDetails, error) {
-	args, err := launchArgs(p)
-	if err != nil {
-		return ProcDetails{}, err
-	}
-	d := deputy.Deputy{
-		Errors: deputy.FromStderr,
-	}
-	cmd := execCommand("docker", args...)
-	out := &bytes.Buffer{}
-	cmd.Stdout = out
-	if err := d.Run(cmd); err != nil {
-		return ProcDetails{}, err
-	}
-	id := string(bytes.TrimSpace(out.Bytes()))
-	status, err := inspect(id)
-	if err != nil {
-		return ProcDetails{}, fmt.Errorf("can't get status for container %q: %s", id, err)
-	}
-	return ProcDetails{
-		ID: strings.TrimPrefix(status.Name, "/"),
-		Status: ProcStatus{
-			State: status.brief(),
-		},
-	}, nil
+	// Inspect gets info about the given container ID (or name).
+	Inspect(id string) (*Info, error)
+
+	// Stop stops the identified container.
+	Stop(id string) error
+
+	// Remove removes the identified container.
+	Remove(id string) error
 }
 
-// Status returns the ProcStatus for the docker container with the given id.
-func Status(id string) (ProcStatus, error) {
-	status, err := inspect(id)
-	if err != nil {
-		return ProcStatus{}, err
-	}
-	return ProcStatus{
-		State: status.brief(),
-	}, nil
+// CLIClient is a Client that wraps CLI execution of the docker command.
+type CLIClient struct {
+	// RunDocker executes the provided docker sub-command and args.
+	RunDocker func(string, ...string) ([]byte, error)
 }
 
-// Destroy stops and removes the docker container with the given id.
-func Destroy(id string) error {
-	d := deputy.Deputy{
-		Errors: deputy.FromStderr,
+// NewCLIClient returns a new CLIClient.
+func NewCLIClient() *CLIClient {
+	cli := &CLIClient{
+		RunDocker: runDocker,
 	}
-	cmd := execCommand("docker", "stop", id)
-	if err := d.Run(cmd); err != nil {
-		return fmt.Errorf("error while stopping container %q: %s", err)
+	return cli
+}
+
+// Run runs a new docker container with the given info.
+func (cli *CLIClient) Run(args RunArgs) (string, error) {
+	cmdArgs := args.CommandlineArgs()
+	out, err := cli.RunDocker("run", cmdArgs...)
+	if err != nil {
+		return "", err
+	}
+	id := string(bytes.TrimSpace(out))
+	return id, nil
+}
+
+// Inspect gets info about the given container ID (or name).
+func (cli *CLIClient) Inspect(id string) (*Info, error) {
+	out, err := cli.RunDocker("inspect", id)
+	if err != nil {
+		return nil, err
 	}
 
-	cmd = execCommand("docker", "rm", id)
-	if err := d.Run(cmd); err != nil {
-		return fmt.Errorf("error while removing container %q: %s", err)
+	info, err := ParseInfoJSON(id, out)
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
+// Stop stops the identified container.
+func (cli *CLIClient) Stop(id string) error {
+	if _, err := cli.RunDocker("stop", id); err != nil {
+		return err
 	}
 	return nil
 }
 
-// launchArgs converts the Process struct into arguments for the docker run
-// command.
-func launchArgs(p charm.Process) ([]string, error) {
-	if err := p.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid proc-info: %s", err)
+// Remove removes the identified container.
+func (cli *CLIClient) Remove(id string) error {
+	if _, err := cli.RunDocker("rm", id); err != nil {
+		return err
 	}
-
-	args := []string{"run", "--detach", "--name", p.Name}
-	for k, v := range p.EnvVars {
-		args = append(args, "-e", k+"="+v)
-	}
-
-	for _, p := range p.Ports {
-		// TODO(natefinch): update this when we use portranges
-		args = append(args, "-p", fmt.Sprintf("%d:%d/%s", p.External, p.Internal, "tcp"))
-	}
-
-	for _, v := range p.Volumes {
-		args = append(args, "-v", fmt.Sprintf("%s:%s:%s", v.ExternalMount, v.InternalMount, v.Mode))
-	}
-
-	// Image and Command must come after all options.
-	args = append(args, p.Image)
-	if p.Command != "" {
-		// TODO(natefinch): update this when we make command a list of strings
-		args = append(args, strings.Fields(p.Command)...)
-	}
-	return args, nil
-}
-
-// status is the struct that contains the schema returned by docker's inspect command
-type status struct {
-	State state
-	Name  string
-}
-
-type state struct {
-	Running    bool
-	Paused     bool
-	Restarting bool
-	OOMKilled  bool
-	Dead       bool
-	Pid        int
-	ExitCode   int
-	Error      string
-}
-
-// brief returns a short summary for the status.
-func (s *status) brief() string {
-	switch {
-	case s.State.Running:
-		return "Running"
-	case s.State.OOMKilled:
-		return "OOMKilled"
-	case s.State.Dead:
-		return "Dead"
-	case s.State.Restarting:
-		return "Restarting"
-	case s.State.Paused:
-		return "Paused"
-	}
-	return "Unknown"
-}
-
-// inspect calls docker inspect and returns the unmarshaled json response.
-func inspect(id string) (status, error) {
-	cmd := execCommand("docker", "inspect", id)
-	out := &bytes.Buffer{}
-	cmd.Stdout = out
-	d := deputy.Deputy{
-		Errors: deputy.FromStderr,
-	}
-	if err := d.Run(cmd); err != nil {
-		return status{}, err
-	}
-	return statusFromInspect(id, out.Bytes())
-}
-
-func statusFromInspect(id string, b []byte) (status, error) {
-	var st []status
-	if err := json.Unmarshal(b, &st); err != nil {
-		return status{}, fmt.Errorf("can't decode response from docker inspect %s: %s", id, err)
-	}
-	if len(st) == 0 {
-		return status{}, errors.New("no status returned from docker inspect " + id)
-	}
-	if len(st) > 1 {
-		return status{}, errors.New("multiple status values returned from docker inspect " + id)
-	}
-	return st[0], nil
-
-}
-
-// These two structs are copied from juju/process/plugin
-
-// ProcDetails represents information about a process launched by a plugin.
-type ProcDetails struct {
-	// ID is a unique string identifying the process to the plugin.
-	ID string `json:"id"`
-	// Status is the status of the process after launch.
-	Status ProcStatus `json:"status"`
-}
-
-// ProcStatus represents the data returned from the Status call.
-type ProcStatus struct {
-	// State represents the human-readable string returned by the plugin for
-	// the process.
-	State string `json:"state"`
+	return nil
 }
